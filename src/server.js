@@ -26,6 +26,13 @@ pool.connect((err, client, release) => {
   release();
 });
 
+// Initialize database schema
+const db = require('./config/database');
+db.initializeDatabase().catch(err => {
+  console.error('Failed to initialize database:', err);
+  process.exit(1);
+});
+
 // Root route
 app.get('/', (req, res) => {
   res.json({
