@@ -26,6 +26,19 @@ pool.connect((err, client, release) => {
   release();
 });
 
+// Root route
+app.get('/', (req, res) => {
+  res.json({
+    message: 'Welcome to Expense Splitter API',
+    endpoints: {
+      people: '/api/people',
+      expenses: '/api/expenses',
+      settlements: '/api/settlements',
+      balances: '/api/balances'
+    }
+  });
+});
+
 // Routes
 app.use('/api/expenses', require('./routes/expenses'));
 app.use('/api/settlements', require('./routes/settlements'));
