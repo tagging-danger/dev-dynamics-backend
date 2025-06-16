@@ -40,19 +40,4 @@ CREATE INDEX IF NOT EXISTS idx_expenses_paid_by ON expenses(paid_by);
 CREATE INDEX IF NOT EXISTS idx_expense_splits_expense_id ON expense_splits(expense_id);
 CREATE INDEX IF NOT EXISTS idx_expense_splits_person_id ON expense_splits(person_id);
 CREATE INDEX IF NOT EXISTS idx_settlements_from_person ON settlements(from_person_id);
-CREATE INDEX IF NOT EXISTS idx_settlements_to_person ON settlements(to_person_id);
-
--- Function to update updated_at timestamp
-CREATE OR REPLACE FUNCTION update_updated_at_column()
-RETURNS TRIGGER AS $$
-BEGIN
-    NEW.updated_at = CURRENT_TIMESTAMP;
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
--- Trigger for expenses table
-CREATE TRIGGER update_expenses_updated_at
-    BEFORE UPDATE ON expenses
-    FOR EACH ROW
-    EXECUTE FUNCTION update_updated_at_column(); 
+CREATE INDEX IF NOT EXISTS idx_settlements_to_person ON settlements(to_person_id); 

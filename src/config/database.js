@@ -32,6 +32,31 @@ const initializeDatabase = async () => {
     
     console.log('Database schema initialized successfully');
 
+    // Create trigger function
+    try {
+      await pool.query(`
+        CREATE OR REPLACE FUNCTION update_updated_at_column()
+        RETURNS TRIGGER AS $$
+        BEGIN
+            NEW.updated_at = CURRENT_TIMESTAMP;
+            RETURN NEW;
+        END;
+        $$ LANGUAGE plpgsql;
+      `);
+
+      // Create trigger
+      await pool.query(`
+        DROP TRIGGER IF EXISTS update_expenses_updated_at ON expenses;
+        CREATE TRIGGER update_expenses_updated_at
+            BEFORE UPDATE ON expenses
+            FOR EACH ROW
+            EXECUTE FUNCTION update_updated_at_column();
+      `);
+    } catch (error) {
+      console.log('Error creating trigger:', error.message);
+      // Continue even if trigger creation fails
+    }
+
     // Seed initial data
     const seedPath = path.join(__dirname, 'seed.sql');
     const seed = fs.readFileSync(seedPath, 'utf8');
