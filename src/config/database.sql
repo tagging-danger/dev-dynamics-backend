@@ -49,7 +49,7 @@ BEGIN
     NEW.updated_at = CURRENT_TIMESTAMP;
     RETURN NEW;
 END;
-$$ language 'plpgsql';
+$$ LANGUAGE plpgsql;
 
 -- Trigger for expenses table
 CREATE TRIGGER update_expenses_updated_at

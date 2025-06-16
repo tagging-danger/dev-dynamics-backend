@@ -9,6 +9,7 @@ const pool = new Pool({
 // Initialize database with schema
 const initializeDatabase = async () => {
   try {
+    // Initialize schema
     const schemaPath = path.join(__dirname, 'database.sql');
     const schema = fs.readFileSync(schemaPath, 'utf8');
     
@@ -30,6 +31,26 @@ const initializeDatabase = async () => {
     }
     
     console.log('Database schema initialized successfully');
+
+    // Seed initial data
+    const seedPath = path.join(__dirname, 'seed.sql');
+    const seed = fs.readFileSync(seedPath, 'utf8');
+    
+    // Split the seed into individual statements
+    const seedStatements = seed.split(';').filter(stmt => stmt.trim());
+    
+    // Execute each seed statement
+    for (const statement of seedStatements) {
+      try {
+        await pool.query(statement);
+      } catch (error) {
+        console.error('Error executing seed statement:', error);
+        // Continue with other statements even if one fails
+        continue;
+      }
+    }
+    
+    console.log('Database seeded successfully');
   } catch (error) {
     console.error('Error initializing database:', error);
     throw error;
