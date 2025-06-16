@@ -1,89 +1,106 @@
 const { Pool } = require('pg');
-const fs = require('fs');
+const fs = require('fs').promises;
 const path = require('path');
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
 });
 
-// Initialize database with schema
-const initializeDatabase = async () => {
+async function initializeDatabase() {
   try {
-    // Initialize schema
+    // Read and execute schema.sql
     const schemaPath = path.join(__dirname, 'database.sql');
-    const schema = fs.readFileSync(schemaPath, 'utf8');
-    
-    // Split the schema into individual statements
-    const statements = schema.split(';').filter(stmt => stmt.trim());
-    
-    // Execute each statement separately and handle errors gracefully
-    for (const statement of statements) {
-      try {
-        await pool.query(statement);
-      } catch (error) {
-        // Ignore errors about existing objects
-        if (error.code === '42710' || error.code === '42P07') {
-          console.log('Object already exists, skipping:', error.message);
-          continue;
+    const schemaSQL = await fs.readFile(schemaPath, 'utf8');
+    const schemaStatements = schemaSQL.split(';').filter(stmt => stmt.trim());
+
+    for (const statement of schemaStatements) {
+      if (statement.trim()) {
+        try {
+          await pool.query(statement);
+        } catch (error) {
+          // Ignore errors about existing objects
+          if (error.code === '42710' || error.code === '42P07' || error.code === '23505') {
+            console.log('Object already exists, continuing...');
+          } else {
+            throw error;
+          }
         }
-        throw error;
       }
     }
-    
-    console.log('Database schema initialized successfully');
 
     // Create trigger function
-    try {
-      await pool.query(`
-        CREATE OR REPLACE FUNCTION update_updated_at_column()
-        RETURNS TRIGGER AS $$
-        BEGIN
-            NEW.updated_at = CURRENT_TIMESTAMP;
-            RETURN NEW;
-        END;
-        $$ LANGUAGE plpgsql;
-      `);
+    const triggerFunctionSQL = `
+      CREATE OR REPLACE FUNCTION update_balances()
+      RETURNS TRIGGER AS $$
+      BEGIN
+        -- Delete existing balances for this expense
+        DELETE FROM balances WHERE expense_id = NEW.id;
 
-      // Create trigger
-      await pool.query(`
-        DROP TRIGGER IF EXISTS update_expenses_updated_at ON expenses;
-        CREATE TRIGGER update_expenses_updated_at
-            BEFORE UPDATE ON expenses
-            FOR EACH ROW
-            EXECUTE FUNCTION update_updated_at_column();
-      `);
+        -- Insert new balances for each person in expense_splits
+        INSERT INTO balances (person_id, expense_id, amount)
+        SELECT
+          es.person_id,
+          NEW.id,
+          CASE WHEN es.person_id = NEW.paid_by THEN NEW.amount ELSE -es.amount END
+        FROM expense_splits es
+        WHERE es.expense_id = NEW.id;
+
+        RETURN NEW;
+      END;
+      $$ LANGUAGE plpgsql;
+    `;
+
+    try {
+      await pool.query(triggerFunctionSQL);
+    } catch (error) {
+      console.log('Error creating trigger function:', error.message);
+    }
+
+    // Create trigger
+    const triggerSQL = `
+      DROP TRIGGER IF EXISTS expense_balances_trigger ON expenses;
+      CREATE TRIGGER expense_balances_trigger
+      AFTER INSERT OR UPDATE ON expenses
+      FOR EACH ROW
+      EXECUTE FUNCTION update_balances();
+    `;
+
+    try {
+      await pool.query(triggerSQL);
     } catch (error) {
       console.log('Error creating trigger:', error.message);
-      // Continue even if trigger creation fails
     }
 
-    // Seed initial data
+    // Read and execute seed.sql
     const seedPath = path.join(__dirname, 'seed.sql');
-    const seed = fs.readFileSync(seedPath, 'utf8');
-    
-    // Split the seed into individual statements
-    const seedStatements = seed.split(';').filter(stmt => stmt.trim());
-    
-    // Execute each seed statement
+    const seedSQL = await fs.readFile(seedPath, 'utf8');
+    const seedStatements = seedSQL.split(';').filter(stmt => stmt.trim());
+
     for (const statement of seedStatements) {
-      try {
-        await pool.query(statement);
-      } catch (error) {
-        console.error('Error executing seed statement:', error);
-        // Continue with other statements even if one fails
-        continue;
+      if (statement.trim()) {
+        try {
+          await pool.query(statement);
+        } catch (error) {
+          // Ignore errors about duplicate keys
+          if (error.code === '23505') {
+            console.log('Duplicate key, continuing...');
+          } else {
+            console.log('Error executing seed statement:', error.message);
+          }
+        }
       }
     }
-    
-    console.log('Database seeded successfully');
+
+    console.log('Database schema initialized successfully');
   } catch (error) {
     console.error('Error initializing database:', error);
     throw error;
   }
-};
+}
 
 // Helper function to run queries
-const query = async (text, params) => {
+async function query(text, params) {
   const start = Date.now();
   try {
     const res = await pool.query(text, params);
@@ -94,19 +111,19 @@ const query = async (text, params) => {
     console.error('Error executing query:', error);
     throw error;
   }
-};
+}
 
-// Helper function to get a single row
-const getOne = async (text, params) => {
+// Helper function to get one row
+async function getOne(text, params) {
   const res = await query(text, params);
   return res.rows[0];
-};
+}
 
-// Helper function to get multiple rows
-const getMany = async (text, params) => {
+// Helper function to get many rows
+async function getMany(text, params) {
   const res = await query(text, params);
   return res.rows;
-};
+}
 
 module.exports = {
   pool,

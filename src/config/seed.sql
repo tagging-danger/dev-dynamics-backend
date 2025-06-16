@@ -22,4 +22,17 @@ SELECT
     200.00
 FROM people p
 WHERE p.name IN ('Shantanu', 'Sanket', 'Om')
+ON CONFLICT DO NOTHING;
+
+-- Insert balances
+INSERT INTO balances (person_id, expense_id, amount)
+SELECT 
+    p.id,
+    (SELECT id FROM expenses WHERE description = 'Dinner at restaurant'),
+    CASE 
+        WHEN p.name = 'Shantanu' THEN 600.00
+        ELSE -200.00
+    END
+FROM people p
+WHERE p.name IN ('Shantanu', 'Sanket', 'Om')
 ON CONFLICT DO NOTHING; 

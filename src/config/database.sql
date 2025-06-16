@@ -25,6 +25,15 @@ CREATE TABLE IF NOT EXISTS expense_splits (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Create balances table
+CREATE TABLE IF NOT EXISTS balances (
+    id SERIAL PRIMARY KEY,
+    person_id INTEGER REFERENCES people(id),
+    expense_id INTEGER REFERENCES expenses(id) ON DELETE CASCADE,
+    amount DECIMAL(10,2) NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Create settlements table
 CREATE TABLE IF NOT EXISTS settlements (
     id SERIAL PRIMARY KEY,
@@ -39,5 +48,7 @@ CREATE TABLE IF NOT EXISTS settlements (
 CREATE INDEX IF NOT EXISTS idx_expenses_paid_by ON expenses(paid_by);
 CREATE INDEX IF NOT EXISTS idx_expense_splits_expense_id ON expense_splits(expense_id);
 CREATE INDEX IF NOT EXISTS idx_expense_splits_person_id ON expense_splits(person_id);
+CREATE INDEX IF NOT EXISTS idx_balances_person_id ON balances(person_id);
+CREATE INDEX IF NOT EXISTS idx_balances_expense_id ON balances(expense_id);
 CREATE INDEX IF NOT EXISTS idx_settlements_from_person ON settlements(from_person_id);
 CREATE INDEX IF NOT EXISTS idx_settlements_to_person ON settlements(to_person_id); 
