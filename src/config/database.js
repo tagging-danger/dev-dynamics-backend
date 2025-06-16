@@ -12,7 +12,23 @@ const initializeDatabase = async () => {
     const schemaPath = path.join(__dirname, 'database.sql');
     const schema = fs.readFileSync(schemaPath, 'utf8');
     
-    await pool.query(schema);
+    // Split the schema into individual statements
+    const statements = schema.split(';').filter(stmt => stmt.trim());
+    
+    // Execute each statement separately and handle errors gracefully
+    for (const statement of statements) {
+      try {
+        await pool.query(statement);
+      } catch (error) {
+        // Ignore errors about existing objects
+        if (error.code === '42710' || error.code === '42P07') {
+          console.log('Object already exists, skipping:', error.message);
+          continue;
+        }
+        throw error;
+      }
+    }
+    
     console.log('Database schema initialized successfully');
   } catch (error) {
     console.error('Error initializing database:', error);
