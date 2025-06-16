@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: expense-splitter-backend
+    env: node
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: PORT
+        value: 3000
+      - key: DATABASE_URL
+        sync: false
+      - key: NODE_ENV
+        value: production 
