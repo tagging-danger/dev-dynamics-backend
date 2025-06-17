@@ -2,7 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const morgan = require('morgan');
-const { Pool } = require('pg');
+const db = require('./config/database');
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -11,12 +11,6 @@ const port = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 app.use(morgan('dev'));
-
-// Database configuration
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
-});
 
 // Root route
 app.get('/', (req, res) => {
@@ -48,11 +42,10 @@ app.use((err, req, res, next) => {
 });
 
 // Initialize database and start server
-const db = require('./config/database');
 async function startServer() {
   try {
     // Test database connection
-    const client = await pool.connect();
+    const client = await db.pool.connect();
     console.log('Successfully connected to database');
     client.release();
 
