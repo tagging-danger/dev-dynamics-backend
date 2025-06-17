@@ -38,19 +38,19 @@ app.get('/', (req, res) => {
   res.json({
     message: 'Welcome to Expense Splitter API',
     endpoints: {
-      people: '/api/people',
-      expenses: '/api/expenses',
-      settlements: '/api/settlements',
-      balances: '/api/balances'
+      people: '/people',
+      expenses: '/expenses',
+      settlements: '/settlements',
+      balances: '/balances'
     }
   });
 });
 
-// Routes
-app.use('/api/expenses', require('./routes/expenses'));
-app.use('/api/settlements', require('./routes/settlements'));
-app.use('/api/people', require('./routes/people'));
-app.use('/api/balances', require('./routes/balances'));
+// Routes - Updated to match assignment requirements exactly
+app.use('/expenses', require('./routes/expenses'));
+app.use('/settlements', require('./routes/settlements'));
+app.use('/people', require('./routes/people'));
+app.use('/balances', require('./routes/balances'));
 
 // Error handling middleware
 app.use((err, req, res, next) => {

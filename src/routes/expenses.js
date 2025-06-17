@@ -18,9 +18,11 @@ const validateExpense = [
     .notEmpty()
     .withMessage('Paid by is required'),
   body('split_type')
+    .optional()
     .isIn(['equal', 'percentage', 'exact'])
     .withMessage('Split type must be equal, percentage, or exact'),
   body('split_details')
+    .optional()
     .isObject()
     .withMessage('Split details must be an object'),
   validateRequest

@@ -38,7 +38,7 @@ const getAllExpenses = async (req, res) => {
 
 // Create new expense
 const createExpense = async (req, res) => {
-  const { amount, description, paid_by, split_type, split_details } = req.body;
+  const { amount, description, paid_by, split_type = 'equal', split_details } = req.body;
   
   try {
     // Start transaction
@@ -56,8 +56,35 @@ const createExpense = async (req, res) => {
       [amount, description, paidByPerson.id, split_type]
     );
 
+    // Handle split details
+    let finalSplitDetails = split_details;
+    
+    // If no split_details provided, automatically split equally among all people
+    if (!split_details) {
+      // Get all people from the database
+      const allPeople = await db.getMany('SELECT id, name FROM people ORDER BY name');
+      
+      if (allPeople.length === 0) {
+        // If no people exist, just add the person who paid
+        finalSplitDetails = { [paid_by]: amount };
+      } else {
+        // Split equally among all people
+        const splitAmount = amount / allPeople.length;
+        finalSplitDetails = {};
+        
+        allPeople.forEach((person, index) => {
+          // Handle rounding for the last person
+          if (index === allPeople.length - 1) {
+            finalSplitDetails[person.name] = amount - (splitAmount * (allPeople.length - 1));
+          } else {
+            finalSplitDetails[person.name] = splitAmount;
+          }
+        });
+      }
+    }
+
     // Create expense splits
-    for (const [personName, splitAmount] of Object.entries(split_details)) {
+    for (const [personName, splitAmount] of Object.entries(finalSplitDetails)) {
       const person = await db.getOne(
         'INSERT INTO people (name) VALUES ($1) ON CONFLICT (name) DO UPDATE SET name = EXCLUDED.name RETURNING id',
         [personName]
@@ -89,7 +116,7 @@ const createExpense = async (req, res) => {
 // Update expense
 const updateExpense = async (req, res) => {
   const { id } = req.params;
-  const { amount, description, paid_by, split_type, split_details } = req.body;
+  const { amount, description, paid_by, split_type = 'equal', split_details } = req.body;
 
   try {
     await db.query('BEGIN');
@@ -117,8 +144,35 @@ const updateExpense = async (req, res) => {
     // Delete existing splits
     await db.query('DELETE FROM expense_splits WHERE expense_id = $1', [id]);
 
+    // Handle split details
+    let finalSplitDetails = split_details;
+    
+    // If no split_details provided, automatically split equally among all people
+    if (!split_details) {
+      // Get all people from the database
+      const allPeople = await db.getMany('SELECT id, name FROM people ORDER BY name');
+      
+      if (allPeople.length === 0) {
+        // If no people exist, just add the person who paid
+        finalSplitDetails = { [paid_by]: amount };
+      } else {
+        // Split equally among all people
+        const splitAmount = amount / allPeople.length;
+        finalSplitDetails = {};
+        
+        allPeople.forEach((person, index) => {
+          // Handle rounding for the last person
+          if (index === allPeople.length - 1) {
+            finalSplitDetails[person.name] = amount - (splitAmount * (allPeople.length - 1));
+          } else {
+            finalSplitDetails[person.name] = splitAmount;
+          }
+        });
+      }
+    }
+
     // Create new splits
-    for (const [personName, splitAmount] of Object.entries(split_details)) {
+    for (const [personName, splitAmount] of Object.entries(finalSplitDetails)) {
       const person = await db.getOne(
         'INSERT INTO people (name) VALUES ($1) ON CONFLICT (name) DO UPDATE SET name = EXCLUDED.name RETURNING id',
         [personName]
