@@ -15,22 +15,7 @@ app.use(morgan('dev'));
 // Database configuration
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-});
-
-// Test database connection
-pool.connect((err, client, release) => {
-  if (err) {
-    return console.error('Error acquiring client', err.stack);
-  }
-  console.log('Successfully connected to database');
-  release();
-});
-
-// Initialize database schema
-const db = require('./config/database');
-db.initializeDatabase().catch(err => {
-  console.error('Failed to initialize database:', err);
-  process.exit(1);
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
 });
 
 // Root route
@@ -38,19 +23,19 @@ app.get('/', (req, res) => {
   res.json({
     message: 'Welcome to Expense Splitter API',
     endpoints: {
-      people: '/people',
-      expenses: '/expenses',
-      settlements: '/settlements',
-      balances: '/balances'
+      people: '/api/people',
+      expenses: '/api/expenses',
+      settlements: '/api/settlements',
+      balances: '/api/balances'
     }
   });
 });
 
-// Routes - Updated to match assignment requirements exactly
-app.use('/expenses', require('./routes/expenses'));
-app.use('/settlements', require('./routes/settlements'));
-app.use('/people', require('./routes/people'));
-app.use('/balances', require('./routes/balances'));
+// Routes
+app.use('/api/expenses', require('./routes/expenses'));
+app.use('/api/settlements', require('./routes/settlements'));
+app.use('/api/people', require('./routes/people'));
+app.use('/api/balances', require('./routes/balances'));
 
 // Error handling middleware
 app.use((err, req, res, next) => {
@@ -62,11 +47,31 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Start server
-if (process.env.NODE_ENV !== 'test') {
-  app.listen(port, () => {
-    console.log(`Server is running on port ${port}`);
-  });
+// Initialize database and start server
+const db = require('./config/database');
+async function startServer() {
+  try {
+    // Test database connection
+    const client = await pool.connect();
+    console.log('Successfully connected to database');
+    client.release();
+
+    // Initialize database schema
+    await db.initializeDatabase();
+    console.log('Database schema initialized successfully');
+
+    // Start server
+    if (process.env.NODE_ENV !== 'test') {
+      app.listen(port, () => {
+        console.log(`Server is running on port ${port}`);
+      });
+    }
+  } catch (error) {
+    console.error('Failed to start server:', error);
+    process.exit(1);
+  }
 }
+
+startServer();
 
 module.exports = app; 
