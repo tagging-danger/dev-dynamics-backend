@@ -41,7 +41,10 @@ app.get('/', (req, res) => {
       people: '/api/people',
       expenses: '/api/expenses',
       settlements: '/api/settlements',
-      balances: '/api/balances'
+      balances: '/api/balances',
+      categories: '/api/categories',
+      'recurring-expenses': '/api/recurring-expenses',
+      analytics: '/api/analytics'
     }
   });
 });
@@ -51,6 +54,9 @@ app.use('/api/expenses', require('./routes/expenses'));
 app.use('/api/settlements', require('./routes/settlements'));
 app.use('/api/people', require('./routes/people'));
 app.use('/api/balances', require('./routes/balances'));
+app.use('/api/categories', require('./routes/categories'));
+app.use('/api/recurring-expenses', require('./routes/recurringExpenses'));
+app.use('/api/analytics', require('./routes/analytics'));
 
 // Error handling middleware
 app.use((err, req, res, next) => {

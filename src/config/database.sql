@@ -5,13 +5,37 @@ CREATE TABLE IF NOT EXISTS people (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Create categories table
+CREATE TABLE IF NOT EXISTS categories (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(50) NOT NULL UNIQUE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Create expenses table
 CREATE TABLE IF NOT EXISTS expenses (
     id SERIAL PRIMARY KEY,
     amount DECIMAL(10,2) NOT NULL CHECK (amount > 0),
     description TEXT NOT NULL,
     paid_by INTEGER REFERENCES people(id),
+    category_id INTEGER REFERENCES categories(id),
     split_type VARCHAR(20) NOT NULL CHECK (split_type IN ('equal', 'percentage', 'exact')),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create recurring_expenses table
+CREATE TABLE IF NOT EXISTS recurring_expenses (
+    id SERIAL PRIMARY KEY,
+    amount DECIMAL(10,2) NOT NULL CHECK (amount > 0),
+    description TEXT NOT NULL,
+    paid_by INTEGER REFERENCES people(id),
+    category_id INTEGER REFERENCES categories(id),
+    split_type VARCHAR(20) NOT NULL CHECK (split_type IN ('equal', 'percentage', 'exact')),
+    frequency VARCHAR(20) NOT NULL CHECK (frequency IN ('daily', 'weekly', 'monthly', 'yearly')),
+    start_date DATE NOT NULL,
+    end_date DATE,
+    last_processed DATE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
@@ -20,6 +44,15 @@ CREATE TABLE IF NOT EXISTS expenses (
 CREATE TABLE IF NOT EXISTS expense_splits (
     id SERIAL PRIMARY KEY,
     expense_id INTEGER REFERENCES expenses(id) ON DELETE CASCADE,
+    person_id INTEGER REFERENCES people(id),
+    amount DECIMAL(10,2) NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create recurring_expense_splits table
+CREATE TABLE IF NOT EXISTS recurring_expense_splits (
+    id SERIAL PRIMARY KEY,
+    recurring_expense_id INTEGER REFERENCES recurring_expenses(id) ON DELETE CASCADE,
     person_id INTEGER REFERENCES people(id),
     amount DECIMAL(10,2) NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
@@ -46,8 +79,13 @@ CREATE TABLE IF NOT EXISTS settlements (
 
 -- Create indexes for better query performance
 CREATE INDEX IF NOT EXISTS idx_expenses_paid_by ON expenses(paid_by);
+CREATE INDEX IF NOT EXISTS idx_expenses_category ON expenses(category_id);
+CREATE INDEX IF NOT EXISTS idx_recurring_expenses_paid_by ON recurring_expenses(paid_by);
+CREATE INDEX IF NOT EXISTS idx_recurring_expenses_category ON recurring_expenses(category_id);
 CREATE INDEX IF NOT EXISTS idx_expense_splits_expense_id ON expense_splits(expense_id);
 CREATE INDEX IF NOT EXISTS idx_expense_splits_person_id ON expense_splits(person_id);
+CREATE INDEX IF NOT EXISTS idx_recurring_expense_splits_expense_id ON recurring_expense_splits(recurring_expense_id);
+CREATE INDEX IF NOT EXISTS idx_recurring_expense_splits_person_id ON recurring_expense_splits(person_id);
 CREATE INDEX IF NOT EXISTS idx_balances_person_id ON balances(person_id);
 CREATE INDEX IF NOT EXISTS idx_balances_expense_id ON balances(expense_id);
 CREATE INDEX IF NOT EXISTS idx_settlements_from_person ON settlements(from_person_id);

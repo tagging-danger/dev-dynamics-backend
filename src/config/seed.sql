@@ -5,13 +5,23 @@ INSERT INTO people (name) VALUES
 ('Om')
 ON CONFLICT (name) DO NOTHING;
 
+-- Insert default categories
+INSERT INTO categories (name) VALUES 
+('Food'),
+('Travel'),
+('Utilities'),
+('Entertainment'),
+('Other')
+ON CONFLICT (name) DO NOTHING;
+
 -- Insert sample expense
-INSERT INTO expenses (amount, description, paid_by, split_type)
+INSERT INTO expenses (amount, description, paid_by, split_type, category_id)
 SELECT 
     600.00,
     'Dinner at restaurant',
     (SELECT id FROM people WHERE name = 'Shantanu'),
-    'equal'
+    'equal',
+    (SELECT id FROM categories WHERE name = 'Food')
 ON CONFLICT DO NOTHING;
 
 -- Insert expense splits
